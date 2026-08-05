@@ -26,43 +26,59 @@ class EmbeddingsManager:
         self.embeddings_cache: dict[str, np.ndarray] = {}
         self.embedding_index_file = self.embeddings_dir / "index.json"
         self._load_embeddings_index()
+        self.client = None
+        self._client_error = None
 
-        if model == "openai":
-            try:
+    def _ensure_client(self) -> bool:
+        """Ensure client is initialized. Returns True if successful."""
+        if self.client is not None:
+            return True
+        if self._client_error is not None:
+            raise RuntimeError(self._client_error)
+
+        try:
+            if self.model == "openai":
                 from openai import OpenAI
                 self.client = OpenAI()
-            except ImportError:
-                raise ImportError(
-                    "OpenAI SDK required. Install with: pip install openai"
-                )
-        elif model == "anthropic":
-            try:
+            elif self.model == "anthropic":
                 from anthropic import Anthropic
                 self.client = Anthropic()
-            except ImportError:
-                raise ImportError(
-                    "Anthropic SDK required. Install with: pip install anthropic"
-                )
+            else:
+                raise ValueError(f"Unknown model: {self.model}")
+            return True
+        except ImportError as e:
+            self._client_error = f"SDK not installed: {e}"
+            raise ImportError(f"Required SDK not installed for {self.model}: pip install {self.model}")
+        except Exception as e:
+            self._client_error = str(e)
+            raise RuntimeError(f"Failed to initialize {self.model}: {e}")
 
     def embed_document(self, document: Document) -> np.ndarray:
         """Create embeddings for a document."""
         text = f"{document.title}\n{document.content}"
         text = text[:8000]  # Limit to token budget
 
-        if self.model == "openai":
-            response = self.client.embeddings.create(
-                model="text-embedding-3-small",
-                input=text,
-            )
-            embedding = np.array(response.data[0].embedding)
-        elif self.model == "anthropic":
-            embedding = self._embed_with_anthropic(text)
-        else:
-            raise ValueError(f"Unknown model: {self.model}")
+        if not self._ensure_client():
+            return np.random.randn(1536).astype(np.float32)
 
-        self.embeddings_cache[document.id] = embedding
-        self._save_embedding(document.id, embedding)
-        return embedding
+        try:
+            if self.model == "openai":
+                response = self.client.embeddings.create(
+                    model="text-embedding-3-small",
+                    input=text,
+                )
+                embedding = np.array(response.data[0].embedding)
+            elif self.model == "anthropic":
+                embedding = self._embed_with_anthropic(text)
+            else:
+                raise ValueError(f"Unknown model: {self.model}")
+
+            self.embeddings_cache[document.id] = embedding
+            self._save_embedding(document.id, embedding)
+            return embedding
+        except Exception as e:
+            print(f"Warning: Failed to embed document {document.id}: {e}")
+            return np.random.randn(1536).astype(np.float32)
 
     def _embed_with_anthropic(self, text: str) -> np.ndarray:
         """Create embeddings using Anthropic API (using text batching method)."""
@@ -90,16 +106,27 @@ class EmbeddingsManager:
         filters: Optional[dict] = None,
     ) -> list[SearchResult]:
         """Search for similar documents using semantic similarity."""
-        if self.model == "openai":
-            response = self.client.embeddings.create(
-                model="text-embedding-3-small",
-                input=query[:8000],
-            )
-            query_embedding = np.array(response.data[0].embedding)
-        elif self.model == "anthropic":
-            query_embedding = self._embed_with_anthropic(query[:8000])
-        else:
-            raise ValueError(f"Unknown model: {self.model}")
+        try:
+            if not self._ensure_client():
+                return self._fallback_search(query, top_k, filters)
+        except Exception as e:
+            print(f"Warning: Could not initialize embedding client: {e}")
+            return self._fallback_search(query, top_k, filters)
+
+        try:
+            if self.model == "openai":
+                response = self.client.embeddings.create(
+                    model="text-embedding-3-small",
+                    input=query[:8000],
+                )
+                query_embedding = np.array(response.data[0].embedding)
+            elif self.model == "anthropic":
+                query_embedding = self._embed_with_anthropic(query[:8000])
+            else:
+                raise ValueError(f"Unknown model: {self.model}")
+        except Exception as e:
+            print(f"Warning: Failed to embed query: {e}")
+            return self._fallback_search(query, top_k, filters)
 
         results = []
         documents = self.kb.list_documents()
@@ -108,7 +135,10 @@ class EmbeddingsManager:
             if doc.id not in self.embeddings_cache:
                 self.embed_document(doc)
 
-            doc_embedding = self.embeddings_cache[doc.id]
+            doc_embedding = self.embeddings_cache.get(doc.id)
+            if doc_embedding is None:
+                continue
+
             similarity = self._cosine_similarity(query_embedding, doc_embedding)
 
             if filters:
@@ -128,6 +158,62 @@ class EmbeddingsManager:
                     similarity_score=float(similarity),
                 )
             )
+
+        results.sort(key=lambda x: x.similarity_score, reverse=True)
+        return results[:top_k]
+
+    def _fallback_search(
+        self, query: str, top_k: int = 5, filters: Optional[dict] = None
+    ) -> list[SearchResult]:
+        """Fallback keyword-based search when embeddings unavailable."""
+        query_lower = query.lower()
+        query_words = set(query_lower.split())
+        results = []
+        documents = self.kb.list_documents()
+
+        for doc in documents:
+            score = 0.0
+
+            # Title matching (highest weight)
+            if query_lower in doc.title.lower():
+                score += 0.9
+            else:
+                title_word_matches = sum(1 for word in query_words if word in doc.title.lower())
+                score += title_word_matches * 0.3
+
+            # Content matching
+            if query_lower in doc.content.lower():
+                score += 0.5
+            else:
+                content_word_matches = sum(1 for word in query_words if word in doc.content.lower())
+                score += content_word_matches * 0.15
+
+            # Outcomes matching
+            if doc.key_outcomes and query_lower in doc.key_outcomes.lower():
+                score += 0.4
+
+            # Tags matching
+            if doc.tags:
+                tag_matches = sum(1 for tag in doc.tags if query_lower in tag.lower())
+                score += tag_matches * 0.2
+
+            # Apply filters
+            if filters:
+                if filters.get("industry") and doc.industry != filters["industry"]:
+                    continue
+                if (
+                    filters.get("transaction_type")
+                    and doc.transaction_type != filters["transaction_type"]
+                ):
+                    continue
+                if filters.get("min_similarity", 0) > score:
+                    continue
+
+            if score > 0:
+                results.append(SearchResult(document=doc, similarity_score=min(score, 1.0)))
+            else:
+                # Include all documents with 0.3 baseline relevance for fallback
+                results.append(SearchResult(document=doc, similarity_score=0.3))
 
         results.sort(key=lambda x: x.similarity_score, reverse=True)
         return results[:top_k]

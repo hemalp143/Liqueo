@@ -46,9 +46,13 @@ class RecommendationEngine:
         if industry_specific and query_industry:
             filters["industry"] = query_industry
 
-        search_results = self.embeddings_manager.semantic_search(
-            query_text, top_k=top_k * 2, filters=filters
-        )
+        try:
+            search_results = self.embeddings_manager.semantic_search(
+                query_text, top_k=top_k * 2, filters=filters
+            )
+        except Exception as e:
+            print(f"Warning: Semantic search failed, using fallback: {e}")
+            search_results = self._fallback_recommendations(query_industry, top_k)
 
         recommendations = []
         for result in search_results:
@@ -72,6 +76,12 @@ class RecommendationEngine:
             recommendations.append(recommendation)
 
         return recommendations[:top_k]
+
+    def _fallback_recommendations(self, industry: Optional[str], top_k: int) -> list:
+        """Fallback: return recent documents from same industry."""
+        docs = self.kb.filter_by_industry(industry) if industry else self.kb.list_documents()
+        docs = sorted(docs, key=lambda d: d.created_at, reverse=True)[:top_k]
+        return [SearchResult(document=doc, similarity_score=0.5) for doc in docs]
 
     def recommend_by_industry(self, industry: str, top_k: int = 5) -> list[Recommendation]:
         """Get recommendations for all engagements in an industry."""

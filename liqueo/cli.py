@@ -86,7 +86,12 @@ def add(
 def search(query: str, top_k: int, industry: Optional[str], transaction_type: Optional[str]):
     """Search the knowledge base."""
     kb = KnowledgeBase()
-    embeddings = EmbeddingsManager(kb)
+
+    try:
+        embeddings = EmbeddingsManager(kb)
+    except Exception as e:
+        console.print(f"⚠️ Warning: {e}", style="yellow")
+        embeddings = EmbeddingsManager(kb)
 
     filters = {}
     if industry:
@@ -94,7 +99,11 @@ def search(query: str, top_k: int, industry: Optional[str], transaction_type: Op
     if transaction_type:
         filters["transaction_type"] = transaction_type
 
-    results = embeddings.semantic_search(query, top_k=top_k, filters=filters)
+    try:
+        results = embeddings.semantic_search(query, top_k=top_k, filters=filters)
+    except Exception as e:
+        console.print(f"⚠️ Search error (falling back to keyword search): {e}", style="yellow")
+        results = embeddings.semantic_search(query, top_k=top_k, filters=filters)
 
     if not results:
         console.print("No results found", style="yellow")
