@@ -188,6 +188,7 @@ def render_add_document():
                     id=doc_id,
                     title=title,
                     content=content,
+                    doc_type="engagement",
                     industry=industry,
                     transaction_type=transaction_type or None,
                     engagement_value=value if value > 0 else None,
