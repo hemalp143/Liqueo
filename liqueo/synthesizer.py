@@ -312,7 +312,7 @@ Keep the analysis concise and focused."""
             output.append("\n2. RECOMMENDED APPROACH:")
             approaches = [rec.suggested_approach for rec in recommendations if rec.suggested_approach]
             if approaches:
-                for approach in set(approaches)[:3]:
+                for approach in list(set(approaches))[:3]:
                     output.append(f"   • {approach}")
             else:
                 output.append("   • Data-driven analysis and stakeholder engagement")
