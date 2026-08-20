@@ -5,11 +5,80 @@ from streamlit_option_menu import option_menu
 import pandas as pd
 from datetime import datetime
 import json
+import os
+from pathlib import Path
 
 from liqueo.core import Document, KnowledgeBase, generate_doc_id
 from liqueo.embeddings import EmbeddingsManager
 from liqueo.recommender import RecommendationEngine
 from liqueo.synthesizer import KnowledgeSynthesizer
+
+
+# File parsing functions
+def extract_text_from_pdf(file):
+    """Extract text from PDF file."""
+    try:
+        import PyPDF2
+        pdf_reader = PyPDF2.PdfReader(file)
+        text = ""
+        for page in pdf_reader.pages:
+            text += page.extract_text() + "\n"
+        return text[:5000]  # Limit to 5000 chars
+    except Exception as e:
+        return f"Error reading PDF: {str(e)}"
+
+def extract_text_from_docx(file):
+    """Extract text from Word document."""
+    try:
+        from docx import Document as DocxDocument
+        doc = DocxDocument(file)
+        text = "\n".join([para.text for para in doc.paragraphs])
+        return text[:5000]  # Limit to 5000 chars
+    except Exception as e:
+        return f"Error reading Word document: {str(e)}"
+
+def extract_text_from_xlsx(file):
+    """Extract text from Excel file."""
+    try:
+        df = pd.read_excel(file)
+        text = df.to_string()
+        return text[:5000]  # Limit to 5000 chars
+    except Exception as e:
+        return f"Error reading Excel file: {str(e)}"
+
+def extract_text_from_txt(file):
+    """Extract text from text file."""
+    try:
+        text = file.read().decode('utf-8')
+        return text[:5000]
+    except Exception as e:
+        return f"Error reading text file: {str(e)}"
+
+def extract_text_from_csv(file):
+    """Extract text from CSV file."""
+    try:
+        df = pd.read_csv(file)
+        text = df.to_string()
+        return text[:5000]
+    except Exception as e:
+        return f"Error reading CSV file: {str(e)}"
+
+def parse_uploaded_file(file):
+    """Parse uploaded file and extract content."""
+    filename = file.name.lower()
+
+    if filename.endswith('.pdf'):
+        return extract_text_from_pdf(file)
+    elif filename.endswith('.docx') or filename.endswith('.doc'):
+        return extract_text_from_docx(file)
+    elif filename.endswith('.xlsx') or filename.endswith('.xls'):
+        return extract_text_from_xlsx(file)
+    elif filename.endswith('.txt'):
+        return extract_text_from_txt(file)
+    elif filename.endswith('.csv'):
+        return extract_text_from_csv(file)
+    else:
+        return f"Unsupported file type: {filename}"
 
 
 # Configure page
@@ -148,64 +217,139 @@ def render_add_document():
 
     st.markdown("---")
 
-    with st.form("add_doc_form"):
-        col1, col2 = st.columns(2)
+    # Tab selection: Manual entry or file upload
+    tab1, tab2 = st.tabs(["📝 Manual Entry", "📤 Upload File"])
 
-        with col1:
-            title = st.text_input("Engagement Title *", placeholder="e.g., SaaS Acquisition")
-            industry = st.text_input("Industry *", placeholder="e.g., Technology")
-            transaction_type = st.text_input("Transaction Type", placeholder="e.g., M&A, Restructuring")
+    with tab1:
+        with st.form("add_doc_form"):
+            col1, col2 = st.columns(2)
 
-        with col2:
-            value = st.number_input("Engagement Value ($M)", min_value=0.0, step=0.1)
-            duration = st.number_input("Duration (months)", min_value=1, max_value=60)
-            client = st.text_input("Client Name", placeholder="e.g., ABC Corporation")
+            with col1:
+                title = st.text_input("Engagement Title *", placeholder="e.g., SaaS Acquisition")
+                industry = st.text_input("Industry *", placeholder="e.g., Technology")
+                transaction_type = st.text_input("Transaction Type", placeholder="e.g., M&A, Restructuring")
 
-        content = st.text_area(
-            "Engagement Details *",
-            height=150,
-            placeholder="Describe the engagement, approach, and key activities..."
+            with col2:
+                value = st.number_input("Engagement Value ($M)", min_value=0.0, step=0.1)
+                duration = st.number_input("Duration (months)", min_value=1, max_value=60)
+                client = st.text_input("Client Name", placeholder="e.g., ABC Corporation")
+
+            content = st.text_area(
+                "Engagement Details *",
+                height=150,
+                placeholder="Describe the engagement, approach, and key activities..."
+            )
+
+            outcomes = st.text_area(
+                "Key Outcomes",
+                height=100,
+                placeholder="Summary of outcomes and impact..."
+            )
+
+            approach = st.text_area(
+                "Consulting Approach",
+                height=80,
+                placeholder="Methodology and key approach..."
+            )
+
+            if st.form_submit_button("Add Engagement", use_container_width=True):
+                if not title or not industry or not content:
+                    st.error("Please fill in Title, Industry, and Details (marked with *)")
+                else:
+                    doc_id = generate_doc_id(title, datetime.now())
+                    doc = Document(
+                        id=doc_id,
+                        title=title,
+                        content=content,
+                        doc_type="engagement",
+                        industry=industry,
+                        transaction_type=transaction_type or None,
+                        engagement_value=value if value > 0 else None,
+                        duration_months=duration,
+                        client_name=client or None,
+                        key_outcomes=outcomes or None,
+                        consulting_approach=approach or None
+                    )
+
+                    st.session_state.kb.add_document(doc)
+
+                    # Try to generate embeddings
+                    try:
+                        st.session_state.embeddings.embed_document(doc)
+                        st.success(f"✓ Document added: **{title}**\n\nEmbeddings generated successfully")
+                    except Exception as e:
+                        st.warning(f"✓ Document added: **{title}**\n\n⚠️ Embeddings not available (using keyword search instead)")
+
+    with tab2:
+        st.markdown("### Upload Document")
+        st.markdown("Supported formats: PDF, Word (.docx), Excel (.xlsx), CSV, Text")
+
+        uploaded_file = st.file_uploader(
+            "Choose a file",
+            type=["pdf", "docx", "doc", "xlsx", "xls", "csv", "txt"]
         )
 
-        outcomes = st.text_area(
-            "Key Outcomes",
-            height=100,
-            placeholder="Summary of outcomes and impact..."
-        )
+        if uploaded_file is not None:
+            st.info(f"📄 File selected: {uploaded_file.name}")
 
-        approach = st.text_area(
-            "Consulting Approach",
-            height=80,
-            placeholder="Methodology and key approach..."
-        )
+            # Extract content from file
+            extracted_content = parse_uploaded_file(uploaded_file)
 
-        if st.form_submit_button("Add Engagement", use_container_width=True):
-            if not title or not industry or not content:
-                st.error("Please fill in Title, Industry, and Details (marked with *)")
-            else:
-                doc_id = generate_doc_id(title, datetime.now())
-                doc = Document(
-                    id=doc_id,
-                    title=title,
-                    content=content,
-                    doc_type="engagement",
-                    industry=industry,
-                    transaction_type=transaction_type or None,
-                    engagement_value=value if value > 0 else None,
-                    duration_months=duration,
-                    client_name=client or None,
-                    key_outcomes=outcomes or None,
-                    consulting_approach=approach or None
+            # Form for file-based entry
+            with st.form("upload_doc_form"):
+                title = st.text_input(
+                    "Engagement Title *",
+                    value=uploaded_file.name.split('.')[0],
+                    placeholder="e.g., SaaS Acquisition"
+                )
+                industry = st.text_input("Industry *", placeholder="e.g., Technology")
+                transaction_type = st.text_input("Transaction Type", placeholder="e.g., M&A")
+
+                col1, col2 = st.columns(2)
+                with col1:
+                    value = st.number_input("Value ($M)", min_value=0.0, step=0.1)
+                with col2:
+                    duration = st.number_input("Duration (months)", min_value=1, max_value=60)
+
+                client = st.text_input("Client Name", placeholder="Optional")
+
+                content = st.text_area(
+                    "Content (auto-populated from file)",
+                    value=extracted_content,
+                    height=200
                 )
 
-                st.session_state.kb.add_document(doc)
+                outcomes = st.text_area(
+                    "Key Outcomes",
+                    height=80,
+                    placeholder="Summary of outcomes..."
+                )
 
-                # Try to generate embeddings
-                try:
-                    st.session_state.embeddings.embed_document(doc)
-                    st.success(f"✓ Document added: **{title}**\n\nEmbeddings generated successfully")
-                except Exception as e:
-                    st.warning(f"✓ Document added: **{title}**\n\n⚠️ Embeddings not available (using keyword search instead)")
+                if st.form_submit_button("Add from File", use_container_width=True):
+                    if not title or not industry or not content:
+                        st.error("Please fill in Title, Industry, and Content")
+                    else:
+                        doc_id = generate_doc_id(title, datetime.now())
+                        doc = Document(
+                            id=doc_id,
+                            title=title,
+                            content=content,
+                            doc_type="engagement",
+                            industry=industry,
+                            transaction_type=transaction_type or None,
+                            engagement_value=value if value > 0 else None,
+                            duration_months=duration,
+                            client_name=client or None,
+                            key_outcomes=outcomes or None
+                        )
+
+                        st.session_state.kb.add_document(doc)
+
+                        try:
+                            st.session_state.embeddings.embed_document(doc)
+                            st.success(f"✓ Document added from file: **{title}**")
+                        except Exception as e:
+                            st.warning(f"✓ Document added: **{title}**\n\n⚠️ Using keyword search mode")
 
 
 def render_search():
