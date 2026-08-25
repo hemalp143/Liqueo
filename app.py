@@ -281,54 +281,87 @@ def render_add_document():
                         st.warning(f"✓ Document added: **{title}**\n\n⚠️ Embeddings not available (using keyword search instead)")
 
     with tab2:
-        st.markdown("### Upload Document")
-        st.markdown("Supported formats: PDF, Word (.docx), Excel (.xlsx), CSV, Text")
+        st.markdown("### Step 1️⃣: Enter Company Information")
+        st.markdown("Supported file formats: PDF, Word (.docx), Excel (.xlsx), CSV, Text")
 
-        uploaded_file = st.file_uploader(
-            "Choose a file",
-            type=["pdf", "docx", "doc", "xlsx", "xls", "csv", "txt"]
+        # Step 1: Get company/engagement details
+        col1, col2 = st.columns(2)
+
+        with col1:
+            company_name = st.text_input("Company Name *", placeholder="e.g., Acme Corp, TechStart Inc")
+            industry = st.text_input("Industry *", placeholder="e.g., Technology, Healthcare, Retail")
+            transaction_type = st.text_input("Transaction Type", placeholder="e.g., M&A, Restructuring, Digital Transformation")
+
+        with col2:
+            engagement_value = st.number_input("Engagement Value ($M)", min_value=0.0, step=0.1)
+            duration = st.number_input("Duration (months)", min_value=1, max_value=60)
+            client_contact = st.text_input("Contact Person", placeholder="e.g., John Smith (Optional)")
+
+        # Step 2: Upload files
+        st.markdown("---")
+        st.markdown("### Step 2️⃣: Upload Supporting Files")
+
+        uploaded_files = st.file_uploader(
+            "Upload one or more files",
+            type=["pdf", "docx", "doc", "xlsx", "xls", "csv", "txt"],
+            accept_multiple_files=True
         )
 
-        if uploaded_file is not None:
-            st.info(f"📄 File selected: {uploaded_file.name}")
+        if uploaded_files:
+            st.markdown(f"✅ **{len(uploaded_files)} file(s) selected**")
 
-            # Extract content from file
-            extracted_content = parse_uploaded_file(uploaded_file)
+            # Extract and combine content from all files
+            all_content = []
+            file_list = []
 
-            # Form for file-based entry
-            with st.form("upload_doc_form"):
-                title = st.text_input(
-                    "Engagement Title *",
-                    value=uploaded_file.name.split('.')[0],
-                    placeholder="e.g., SaaS Acquisition"
-                )
-                industry = st.text_input("Industry *", placeholder="e.g., Technology")
-                transaction_type = st.text_input("Transaction Type", placeholder="e.g., M&A")
+            for file in uploaded_files:
+                st.info(f"📄 {file.name}")
+                extracted = parse_uploaded_file(file)
+                all_content.append(f"\n--- From {file.name} ---\n{extracted}")
+                file_list.append(file.name)
 
-                col1, col2 = st.columns(2)
+            combined_content = "\n".join(all_content)
+
+            # Step 3: Review and submit
+            st.markdown("---")
+            st.markdown("### Step 3️⃣: Review & Submit")
+
+            # Create form for final submission
+            with st.form("upload_with_files_form"):
+                st.markdown("**Engagement Summary:**")
+
+                col1, col2, col3 = st.columns(3)
                 with col1:
-                    value = st.number_input("Value ($M)", min_value=0.0, step=0.1)
+                    st.metric("Company", company_name or "Not set")
                 with col2:
-                    duration = st.number_input("Duration (months)", min_value=1, max_value=60)
+                    st.metric("Industry", industry or "Not set")
+                with col3:
+                    st.metric("Files", len(uploaded_files))
 
-                client = st.text_input("Client Name", placeholder="Optional")
+                st.markdown("**Files uploaded:**")
+                for fname in file_list:
+                    st.caption(f"✓ {fname}")
 
+                # Edit extracted content if needed
                 content = st.text_area(
-                    "Content (auto-populated from file)",
-                    value=extracted_content,
+                    "Combined Content (auto-extracted from files - edit if needed)",
+                    value=combined_content[:3000] if combined_content else "No content extracted",
                     height=200
                 )
 
                 outcomes = st.text_area(
-                    "Key Outcomes",
+                    "Key Outcomes/Notes",
                     height=80,
-                    placeholder="Summary of outcomes..."
+                    placeholder="Summary of outcomes or important notes..."
                 )
 
-                if st.form_submit_button("Add from File", use_container_width=True):
-                    if not title or not industry or not content:
-                        st.error("Please fill in Title, Industry, and Content")
+                if st.form_submit_button("✅ Save Engagement with Files", use_container_width=True):
+                    if not company_name or not industry:
+                        st.error("Please enter Company Name and Industry (marked with *)")
                     else:
+                        # Create title from company name and type
+                        title = f"{company_name} - {transaction_type if transaction_type else 'Engagement'}"
+
                         doc_id = generate_doc_id(title, datetime.now())
                         doc = Document(
                             id=doc_id,
@@ -337,19 +370,25 @@ def render_add_document():
                             doc_type="engagement",
                             industry=industry,
                             transaction_type=transaction_type or None,
-                            engagement_value=value if value > 0 else None,
+                            engagement_value=engagement_value if engagement_value > 0 else None,
                             duration_months=duration,
-                            client_name=client or None,
-                            key_outcomes=outcomes or None
+                            client_name=client_contact or None,
+                            key_outcomes=outcomes or None,
+                            metadata={
+                                "uploaded_files": file_list,
+                                "file_count": len(uploaded_files)
+                            }
                         )
 
                         st.session_state.kb.add_document(doc)
 
                         try:
                             st.session_state.embeddings.embed_document(doc)
-                            st.success(f"✓ Document added from file: **{title}**")
+                            st.success(f"✅ **{title}** saved successfully!\n\n📁 Files: {', '.join(file_list)}")
                         except Exception as e:
-                            st.warning(f"✓ Document added: **{title}**\n\n⚠️ Using keyword search mode")
+                            st.warning(f"✅ Document saved: **{title}**\n\n⚠️ Using keyword search mode")
+        else:
+            st.info("📤 Upload files in Step 2️⃣ to continue")
 
 
 def render_search():
