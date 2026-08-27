@@ -159,6 +159,12 @@ if "kb" not in st.session_state:
         st.session_state.kb, st.session_state.recommender
     )
 
+# Initialize modal state
+if "show_modal" not in st.session_state:
+    st.session_state.show_modal = False
+if "selected_doc" not in st.session_state:
+    st.session_state.selected_doc = None
+
 
 def render_header():
     """Render page header."""
@@ -428,16 +434,81 @@ def render_search():
                             with col2:
                                 st.metric("Relevance", f"{result.similarity_score:.0%}")
 
-                            col1, col2, col3 = st.columns(3)
+                            col1, col2, col3, col4 = st.columns(4)
                             with col1:
                                 st.caption(f"Value: ${doc.engagement_value}M" if doc.engagement_value else "Value: N/A")
                             with col2:
                                 st.caption(f"Duration: {doc.duration_months}m" if doc.duration_months else "Duration: N/A")
                             with col3:
                                 st.caption(f"Client: {doc.client_name}" if doc.client_name else "Client: N/A")
+                            with col4:
+                                if st.button(f"👁️ View", key=f"view_{doc.id}", use_container_width=True):
+                                    st.session_state.selected_doc = doc
+                                    st.session_state.show_modal = True
 
                             if doc.key_outcomes:
                                 st.markdown(f"**Outcomes:** {doc.key_outcomes}")
+
+    # Display modal popup if a document is selected
+    if st.session_state.get("show_modal") and st.session_state.get("selected_doc"):
+        doc = st.session_state.selected_doc
+        with st.modal("📋 Engagement Details"):
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                st.title(doc.title)
+            with col2:
+                if st.button("✕", key="close_modal", help="Close"):
+                    st.session_state.show_modal = False
+                    st.rerun()
+
+            st.markdown("---")
+
+            # Key Information
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Industry", doc.industry or "N/A")
+            with col2:
+                st.metric("Type", doc.transaction_type or "N/A")
+            with col3:
+                st.metric("Value ($M)", f"${doc.engagement_value}" if doc.engagement_value else "N/A")
+            with col4:
+                st.metric("Duration (months)", doc.duration_months or "N/A")
+
+            st.markdown("---")
+
+            # Client Information
+            if doc.client_name:
+                st.subheader("Client")
+                st.write(doc.client_name)
+
+            # Engagement Details
+            st.subheader("📝 Engagement Details")
+            st.write(doc.content)
+
+            # Consulting Approach
+            if doc.consulting_approach:
+                st.subheader("🎯 Consulting Approach")
+                st.write(doc.consulting_approach)
+
+            # Key Outcomes
+            if doc.key_outcomes:
+                st.subheader("✅ Key Outcomes")
+                st.write(doc.key_outcomes)
+
+            # Metadata
+            if doc.metadata:
+                st.subheader("📁 File Information")
+                if doc.metadata.get("uploaded_files"):
+                    st.write("**Uploaded Files:**")
+                    for fname in doc.metadata.get("uploaded_files", []):
+                        st.caption(f"• {fname}")
+
+            st.markdown("---")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.caption(f"📅 Created: {doc.created_at.strftime('%Y-%m-%d %H:%M') if doc.created_at else 'N/A'}")
+            with col2:
+                st.caption(f"🆔 ID: {doc.id[:8]}...")
 
 
 def render_recommendations():
@@ -473,8 +544,14 @@ def render_recommendations():
                     for i, rec in enumerate(recommendations, 1):
                         doc = rec.reference_document
                         with st.container(border=True):
-                            st.markdown(f"**{i}. {doc.title}**")
-                            st.markdown(f"*Relevance: {rec.relevance_score:.0%} • {rec.reasoning}*")
+                            col1, col2 = st.columns([3, 1])
+                            with col1:
+                                st.markdown(f"**{i}. {doc.title}**")
+                                st.markdown(f"*Relevance: {rec.relevance_score:.0%} • {rec.reasoning}*")
+                            with col2:
+                                if st.button(f"👁️ View", key=f"view_rec_{doc.id}", use_container_width=True):
+                                    st.session_state.selected_doc = doc
+                                    st.session_state.show_modal = True
 
                             col1, col2, col3 = st.columns(3)
                             with col1:
@@ -486,6 +563,67 @@ def render_recommendations():
                             with col3:
                                 if rec.estimated_effort:
                                     st.success(f"**Effort:** {rec.estimated_effort}")
+
+    # Display modal popup if a document is selected
+    if st.session_state.get("show_modal") and st.session_state.get("selected_doc"):
+        doc = st.session_state.selected_doc
+        with st.modal("📋 Engagement Details"):
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                st.title(doc.title)
+            with col2:
+                if st.button("✕", key="close_modal_rec", help="Close"):
+                    st.session_state.show_modal = False
+                    st.rerun()
+
+            st.markdown("---")
+
+            # Key Information
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Industry", doc.industry or "N/A")
+            with col2:
+                st.metric("Type", doc.transaction_type or "N/A")
+            with col3:
+                st.metric("Value ($M)", f"${doc.engagement_value}" if doc.engagement_value else "N/A")
+            with col4:
+                st.metric("Duration (months)", doc.duration_months or "N/A")
+
+            st.markdown("---")
+
+            # Client Information
+            if doc.client_name:
+                st.subheader("Client")
+                st.write(doc.client_name)
+
+            # Engagement Details
+            st.subheader("📝 Engagement Details")
+            st.write(doc.content)
+
+            # Consulting Approach
+            if doc.consulting_approach:
+                st.subheader("🎯 Consulting Approach")
+                st.write(doc.consulting_approach)
+
+            # Key Outcomes
+            if doc.key_outcomes:
+                st.subheader("✅ Key Outcomes")
+                st.write(doc.key_outcomes)
+
+            # Metadata
+            if doc.metadata:
+                st.subheader("📁 File Information")
+                if doc.metadata.get("uploaded_files"):
+                    st.write("**Uploaded Files:**")
+                    for fname in doc.metadata.get("uploaded_files", []):
+                        st.caption(f"• {fname}")
+
+            st.markdown("---")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.caption(f"📅 Created: {doc.created_at.strftime('%Y-%m-%d %H:%M') if doc.created_at else 'N/A'}")
+            with col2:
+                st.caption(f"🆔 ID: {doc.id[:8]}...")
 
 
 def render_synthesize():
