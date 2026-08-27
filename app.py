@@ -247,228 +247,139 @@ def render_add_document():
 
     st.markdown("---")
 
-    # Tab selection: Manual entry or file upload
-    tab1, tab2 = st.tabs(["📝 Manual Entry", "📤 Upload File"])
-
-    with tab1:
-        with st.form("add_doc_form"):
-            col1, col2 = st.columns(2)
-
-            with col1:
-                title = st.text_input("Engagement Title *", placeholder="e.g., SaaS Acquisition")
-                industry = st.text_input("Industry *", placeholder="e.g., Technology")
-                transaction_type = st.text_input("Transaction Type", placeholder="e.g., M&A, Restructuring")
-
-            with col2:
-                value = st.number_input("Engagement Value ($M)", min_value=0.0, step=0.1)
-                duration = st.number_input("Duration (months)", min_value=1, max_value=60)
-                client = st.text_input("Client Name", placeholder="e.g., ABC Corporation")
-
-            content = st.text_area(
-                "Engagement Details *",
-                height=150,
-                placeholder="Describe the engagement, approach, and key activities..."
-            )
-
-            outcomes = st.text_area(
-                "Key Outcomes",
-                height=100,
-                placeholder="Summary of outcomes and impact..."
-            )
-
-            approach = st.text_area(
-                "Consulting Approach",
-                height=80,
-                placeholder="Methodology and key approach..."
-            )
-
-            if st.form_submit_button("Add Engagement", use_container_width=True):
-                if not title or not industry or not content:
-                    st.error("Please fill in Title, Industry, and Details (marked with *)")
-                else:
-                    doc_id = generate_doc_id(title, datetime.now())
-                    doc = Document(
-                        id=doc_id,
-                        title=title,
-                        content=content,
-                        doc_type="engagement",
-                        industry=industry,
-                        transaction_type=transaction_type or None,
-                        engagement_value=value if value > 0 else None,
-                        duration_months=duration,
-                        client_name=client or None,
-                        key_outcomes=outcomes or None,
-                        consulting_approach=approach or None
-                    )
-
-                    st.session_state.kb.add_document(doc)
-
-                    # Try to generate embeddings
-                    try:
-                        st.session_state.embeddings.embed_document(doc)
-                        st.success(f"✓ Document added: **{title}**\n\nEmbeddings generated successfully")
-                    except Exception as e:
-                        st.warning(f"✓ Document added: **{title}**\n\n⚠️ Embeddings not available (using keyword search instead)")
-
-    with tab2:
-        st.markdown("### Step 1️⃣: Enter Company Information")
-        st.markdown("Supported file formats: PDF, Word (.docx), Excel (.xlsx), CSV, Text")
-
-        # Step 1: Get company/engagement details
+    with st.form("add_doc_form"):
+        st.markdown("### Engagement Details")
         col1, col2 = st.columns(2)
 
         with col1:
-            company_name = st.text_input("Company Name *", placeholder="e.g., Acme Corp, TechStart Inc")
-            industry = st.text_input("Industry *", placeholder="e.g., Technology, Healthcare, Retail")
-            transaction_type = st.text_input("Transaction Type", placeholder="e.g., M&A, Restructuring, Digital Transformation")
+            title = st.text_input("Engagement Title *", placeholder="e.g., SaaS Acquisition")
+            industry = st.text_input("Industry *", placeholder="e.g., Technology")
+            transaction_type = st.text_input("Transaction Type", placeholder="e.g., M&A, Restructuring")
 
         with col2:
-            engagement_value = st.number_input("Engagement Value ($M)", min_value=0.0, step=0.1)
+            value = st.number_input("Engagement Value ($M)", min_value=0.0, step=0.1)
             duration = st.number_input("Duration (months)", min_value=1, max_value=60)
-            client_contact = st.text_input("Contact Person", placeholder="e.g., John Smith (Optional)")
+            client = st.text_input("Client Name", placeholder="e.g., ABC Corporation")
 
-        # Step 2: Upload files
         st.markdown("---")
-        st.markdown("### Step 2️⃣: Upload Supporting Files")
+        st.markdown("### Add Content")
+        st.markdown("*Choose one: Type details below OR upload files/URLs*")
 
-        # Option A: Local file upload
-        st.markdown("**Option A: Local Files**")
-        uploaded_files = st.file_uploader(
-            "Upload one or more files",
-            type=["pdf", "docx", "doc", "xlsx", "xls", "csv", "txt"],
-            accept_multiple_files=True
-        )
+        # File upload options
+        col1, col2 = st.columns(2)
 
-        # Option B: URL download
-        st.markdown("**Option B: Download from URL (OneDrive, SharePoint, etc.)**")
-        file_url = st.text_input(
-            "Paste direct file URL",
-            placeholder="e.g., https://onedrive.live.com/... or https://sharepoint.com/...",
-            help="Enter a direct download link to a file in OneDrive, SharePoint, or other cloud storage"
-        )
+        with col1:
+            st.markdown("**📄 Upload Local Files**")
+            st.markdown("Supported: PDF, Word, Excel, CSV, Text")
+            uploaded_files = st.file_uploader(
+                "Select files",
+                type=["pdf", "docx", "doc", "xlsx", "xls", "csv", "txt"],
+                accept_multiple_files=True,
+                key="manual_file_uploader"
+            )
 
-        downloaded_files = []
+        with col2:
+            st.markdown("**🔗 Download from URL**")
+            st.markdown("OneDrive, SharePoint, etc.")
+            file_url = st.text_input(
+                "Paste URL",
+                placeholder="https://onedrive.live.com/...",
+                key="manual_url_input",
+                help="Direct download link to document"
+            )
+
+        # Process uploaded and downloaded files
+        extracted_content = ""
+        file_list = []
+        local_files = []
+        url_files = []
+
+        if uploaded_files:
+            st.success(f"✅ {len(uploaded_files)} local file(s) selected")
+            for file in uploaded_files:
+                extracted = parse_uploaded_file(file)
+                extracted_content += f"\n--- From {file.name} ---\n{extracted}"
+                file_list.append(file.name)
+                local_files.append(file.name)
+
         if file_url:
-            if st.button("📥 Download File from URL"):
-                with st.spinner("Downloading file..."):
+            if st.form_submit_button("📥 Download from URL", use_container_width=False):
+                with st.spinner("Downloading..."):
                     file_content, filename = download_file_from_url(file_url)
                     if file_content is None:
                         st.error(f"❌ {filename}")
                     else:
                         st.success(f"✅ Downloaded: {filename}")
-                        # Store in session state for processing
-                        if "downloaded_files" not in st.session_state:
-                            st.session_state.downloaded_files = []
-                        st.session_state.downloaded_files.append((file_content, filename))
+                        extracted = parse_uploaded_file(file_content)
+                        extracted_content += f"\n--- From {filename} ---\n{extracted}"
+                        file_list.append(filename)
+                        url_files.append(filename)
+                        st.rerun()
 
-        # Retrieve downloaded files from session state
-        if "downloaded_files" in st.session_state and st.session_state.downloaded_files:
-            downloaded_files = st.session_state.downloaded_files
+        st.markdown("---")
 
-        # Combine local and downloaded files
-        all_files = []
-        file_list = []
+        # Content textarea (can be auto-filled or edited)
+        default_content = extracted_content if extracted_content else ""
+        content = st.text_area(
+            "Engagement Details *",
+            height=150,
+            placeholder="Type engagement details OR upload files above...",
+            value=default_content
+        )
 
-        if uploaded_files:
-            st.markdown(f"✅ **{len(uploaded_files)} local file(s) selected**")
-            all_files.extend([(f, f.name) for f in uploaded_files])
-            file_list.extend([f.name for f in uploaded_files])
+        outcomes = st.text_area(
+            "Key Outcomes",
+            height=80,
+            placeholder="Summary of outcomes and impact..."
+        )
 
-        if downloaded_files:
-            st.markdown(f"✅ **{len(downloaded_files)} file(s) downloaded from URL**")
-            all_files.extend(downloaded_files)
-            file_list.extend([fname for _, fname in downloaded_files])
+        approach = st.text_area(
+            "Consulting Approach",
+            height=80,
+            placeholder="Methodology and key approach..."
+        )
 
-        if all_files:
-            st.markdown(f"✅ **{len(all_files)} total file(s) ready for processing**")
+        if st.form_submit_button("✅ Add Engagement", use_container_width=True):
+            if not title or not industry or not content:
+                st.error("Please fill in Title, Industry, and Details (marked with *)")
+            else:
+                doc_id = generate_doc_id(title, datetime.now())
+                metadata = {}
+                if file_list:
+                    metadata = {
+                        "uploaded_files": file_list,
+                        "file_count": len(file_list),
+                        "local_files": local_files,
+                        "url_files": url_files
+                    }
 
-            # Extract and combine content from all files
-            all_content = []
-
-            for file, filename in all_files:
-                st.info(f"📄 {filename}")
-                extracted = parse_uploaded_file(file)
-                all_content.append(f"\n--- From {filename} ---\n{extracted}")
-
-            combined_content = "\n".join(all_content)
-
-            # Step 3: Review and submit
-            st.markdown("---")
-            st.markdown("### Step 3️⃣: Review & Submit")
-
-            # Create form for final submission
-            with st.form("upload_with_files_form"):
-                st.markdown("**Engagement Summary:**")
-
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Company", company_name or "Not set")
-                with col2:
-                    st.metric("Industry", industry or "Not set")
-                with col3:
-                    st.metric("Files", len(uploaded_files))
-
-                st.markdown("**Files uploaded:**")
-                for fname in file_list:
-                    st.caption(f"✓ {fname}")
-
-                # Edit extracted content if needed
-                content = st.text_area(
-                    "Combined Content (auto-extracted from files - edit if needed)",
-                    value=combined_content[:3000] if combined_content else "No content extracted",
-                    height=200
+                doc = Document(
+                    id=doc_id,
+                    title=title,
+                    content=content,
+                    doc_type="engagement",
+                    industry=industry,
+                    transaction_type=transaction_type or None,
+                    engagement_value=value if value > 0 else None,
+                    duration_months=duration,
+                    client_name=client or None,
+                    key_outcomes=outcomes or None,
+                    consulting_approach=approach or None,
+                    metadata=metadata if metadata else None
                 )
 
-                outcomes = st.text_area(
-                    "Key Outcomes/Notes",
-                    height=80,
-                    placeholder="Summary of outcomes or important notes..."
-                )
+                st.session_state.kb.add_document(doc)
 
-                if st.form_submit_button("✅ Save Engagement with Files", use_container_width=True):
-                    if not company_name or not industry:
-                        st.error("Please enter Company Name and Industry (marked with *)")
-                    else:
-                        # Create title from company name and type
-                        title = f"{company_name} - {transaction_type if transaction_type else 'Engagement'}"
+                # Try to generate embeddings
+                try:
+                    st.session_state.embeddings.embed_document(doc)
+                    msg = f"✓ Document added: **{title}**\n\nEmbeddings generated successfully"
+                    if file_list:
+                        msg += f"\n\n📁 Files: {', '.join(file_list)}"
+                    st.success(msg)
+                except Exception as e:
+                    st.warning(f"✓ Document added: **{title}**\n\n⚠️ Embeddings not available (using keyword search instead)")
 
-                        doc_id = generate_doc_id(title, datetime.now())
-                        doc = Document(
-                            id=doc_id,
-                            title=title,
-                            content=content,
-                            doc_type="engagement",
-                            industry=industry,
-                            transaction_type=transaction_type or None,
-                            engagement_value=engagement_value if engagement_value > 0 else None,
-                            duration_months=duration,
-                            client_name=client_contact or None,
-                            key_outcomes=outcomes or None,
-                            metadata={
-                                "uploaded_files": file_list,
-                                "file_count": len(all_files),
-                                "local_files": len(uploaded_files) if uploaded_files else 0,
-                                "url_files": len(downloaded_files) if downloaded_files else 0,
-                                "file_sources": {
-                                    "local": [f.name for f in uploaded_files] if uploaded_files else [],
-                                    "urls": [fname for _, fname in downloaded_files] if downloaded_files else []
-                                }
-                            }
-                        )
-
-                        st.session_state.kb.add_document(doc)
-
-                        # Clear downloaded files from session state after saving
-                        if "downloaded_files" in st.session_state:
-                            st.session_state.downloaded_files = []
-
-                        try:
-                            st.session_state.embeddings.embed_document(doc)
-                            st.success(f"✅ **{title}** saved successfully!\n\n📁 Files: {', '.join(file_list)}")
-                        except Exception as e:
-                            st.warning(f"✅ Document saved: **{title}**\n\n⚠️ Using keyword search mode")
-        else:
-            st.info("📤 Upload local files or paste a URL in Step 2️⃣ to continue")
 
 
 def render_search():
