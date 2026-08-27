@@ -7,6 +7,8 @@ from datetime import datetime
 import json
 import os
 from pathlib import Path
+import requests
+from io import BytesIO
 
 from liqueo.core import Document, KnowledgeBase, generate_doc_id
 from liqueo.embeddings import EmbeddingsManager
@@ -79,6 +81,34 @@ def parse_uploaded_file(file):
         return extract_text_from_csv(file)
     else:
         return f"Unsupported file type: {filename}"
+
+def download_file_from_url(url):
+    """Download and parse file from URL (OneDrive, SharePoint, etc.)."""
+    try:
+        # For OneDrive links, modify URL to get direct download
+        if 'onedrive.live.com' in url or 'sharepoint.com' in url:
+            # Remove ?download=1 and add it
+            url = url.split('?')[0]
+            if '?download=1' not in url:
+                url = url + '?download=1'
+
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+
+        response = requests.get(url, headers=headers, timeout=30)
+        response.raise_for_status()
+
+        # Get filename from URL or use generic name
+        filename = url.split('/')[-1].split('?')[0] or "downloaded_file"
+
+        # Create a file-like object
+        file_content = BytesIO(response.content)
+        file_content.name = filename
+
+        return file_content, filename
+    except Exception as e:
+        return None, f"Error downloading file: {str(e)}"
 
 
 # Configure page
@@ -301,24 +331,64 @@ def render_add_document():
         st.markdown("---")
         st.markdown("### Step 2️⃣: Upload Supporting Files")
 
+        # Option A: Local file upload
+        st.markdown("**Option A: Local Files**")
         uploaded_files = st.file_uploader(
             "Upload one or more files",
             type=["pdf", "docx", "doc", "xlsx", "xls", "csv", "txt"],
             accept_multiple_files=True
         )
 
+        # Option B: URL download
+        st.markdown("**Option B: Download from URL (OneDrive, SharePoint, etc.)**")
+        file_url = st.text_input(
+            "Paste direct file URL",
+            placeholder="e.g., https://onedrive.live.com/... or https://sharepoint.com/...",
+            help="Enter a direct download link to a file in OneDrive, SharePoint, or other cloud storage"
+        )
+
+        downloaded_files = []
+        if file_url:
+            if st.button("📥 Download File from URL"):
+                with st.spinner("Downloading file..."):
+                    file_content, filename = download_file_from_url(file_url)
+                    if file_content is None:
+                        st.error(f"❌ {filename}")
+                    else:
+                        st.success(f"✅ Downloaded: {filename}")
+                        # Store in session state for processing
+                        if "downloaded_files" not in st.session_state:
+                            st.session_state.downloaded_files = []
+                        st.session_state.downloaded_files.append((file_content, filename))
+
+        # Retrieve downloaded files from session state
+        if "downloaded_files" in st.session_state and st.session_state.downloaded_files:
+            downloaded_files = st.session_state.downloaded_files
+
+        # Combine local and downloaded files
+        all_files = []
+        file_list = []
+
         if uploaded_files:
-            st.markdown(f"✅ **{len(uploaded_files)} file(s) selected**")
+            st.markdown(f"✅ **{len(uploaded_files)} local file(s) selected**")
+            all_files.extend([(f, f.name) for f in uploaded_files])
+            file_list.extend([f.name for f in uploaded_files])
+
+        if downloaded_files:
+            st.markdown(f"✅ **{len(downloaded_files)} file(s) downloaded from URL**")
+            all_files.extend(downloaded_files)
+            file_list.extend([fname for _, fname in downloaded_files])
+
+        if all_files:
+            st.markdown(f"✅ **{len(all_files)} total file(s) ready for processing**")
 
             # Extract and combine content from all files
             all_content = []
-            file_list = []
 
-            for file in uploaded_files:
-                st.info(f"📄 {file.name}")
+            for file, filename in all_files:
+                st.info(f"📄 {filename}")
                 extracted = parse_uploaded_file(file)
-                all_content.append(f"\n--- From {file.name} ---\n{extracted}")
-                file_list.append(file.name)
+                all_content.append(f"\n--- From {filename} ---\n{extracted}")
 
             combined_content = "\n".join(all_content)
 
@@ -376,11 +446,21 @@ def render_add_document():
                             key_outcomes=outcomes or None,
                             metadata={
                                 "uploaded_files": file_list,
-                                "file_count": len(uploaded_files)
+                                "file_count": len(all_files),
+                                "local_files": len(uploaded_files) if uploaded_files else 0,
+                                "url_files": len(downloaded_files) if downloaded_files else 0,
+                                "file_sources": {
+                                    "local": [f.name for f in uploaded_files] if uploaded_files else [],
+                                    "urls": [fname for _, fname in downloaded_files] if downloaded_files else []
+                                }
                             }
                         )
 
                         st.session_state.kb.add_document(doc)
+
+                        # Clear downloaded files from session state after saving
+                        if "downloaded_files" in st.session_state:
+                            st.session_state.downloaded_files = []
 
                         try:
                             st.session_state.embeddings.embed_document(doc)
@@ -388,7 +468,7 @@ def render_add_document():
                         except Exception as e:
                             st.warning(f"✅ Document saved: **{title}**\n\n⚠️ Using keyword search mode")
         else:
-            st.info("📤 Upload files in Step 2️⃣ to continue")
+            st.info("📤 Upload local files or paste a URL in Step 2️⃣ to continue")
 
 
 def render_search():
