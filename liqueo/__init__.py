@@ -11,6 +11,13 @@ from liqueo.core import (
 from liqueo.embeddings import EmbeddingsManager
 from liqueo.recommender import RecommendationEngine
 from liqueo.synthesizer import KnowledgeSynthesizer
+from liqueo.workflow import (
+    WorkflowEngine,
+    WorkflowSession,
+    WorkflowStep,
+    LessonLearned,
+    EngagementTemplate,
+)
 
 __all__ = [
     "Document",
@@ -19,4 +26,9 @@ __all__ = [
     "EmbeddingsManager",
     "RecommendationEngine",
     "KnowledgeSynthesizer",
+    "WorkflowEngine",
+    "WorkflowSession",
+    "WorkflowStep",
+    "LessonLearned",
+    "EngagementTemplate",
 ]

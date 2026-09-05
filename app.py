@@ -14,6 +14,7 @@ from liqueo.core import Document, KnowledgeBase, generate_doc_id
 from liqueo.embeddings import EmbeddingsManager
 from liqueo.recommender import RecommendationEngine
 from liqueo.synthesizer import KnowledgeSynthesizer
+from liqueo.workflow import WorkflowEngine, WorkflowSession
 
 
 # File parsing functions
@@ -158,12 +159,17 @@ if "kb" not in st.session_state:
     st.session_state.synthesizer = KnowledgeSynthesizer(
         st.session_state.kb, st.session_state.recommender
     )
+    st.session_state.workflow_engine = WorkflowEngine()
 
 # Initialize modal state
 if "show_modal" not in st.session_state:
     st.session_state.show_modal = False
 if "selected_doc" not in st.session_state:
     st.session_state.selected_doc = None
+
+# Initialize workflow state
+if "current_workflow" not in st.session_state:
+    st.session_state.current_workflow = None
 
 
 def render_header():
@@ -725,6 +731,214 @@ def render_documents():
             )
 
 
+def render_workflow():
+    """Render the 9-step knowledge discovery and reuse workflow."""
+    render_header()
+    st.subheader("Knowledge Discovery & Reuse Workflow")
+
+    st.markdown("""
+    ### 📚 Complete 9-Step Workflow
+    Follow this guided workflow to discover relevant knowledge from past engagements
+    and reuse it to create better outcomes for your current challenges.
+    """)
+
+    st.markdown("---")
+
+    # Workflow creation
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        problem = st.text_area(
+            "Step 1️⃣: Define Your Problem or Task *",
+            height=100,
+            placeholder="Describe the challenge, problem, or task you need to solve..."
+        )
+    with col2:
+        st.info("**Step 1: Identify**\n\nDefine the task or problem you need to solve")
+
+    if problem and st.button("Start Knowledge Workflow", use_container_width=True):
+        workflow = st.session_state.workflow_engine.create_workflow(problem)
+        st.session_state.current_workflow = workflow
+        st.success("✅ Workflow created! Continue with Step 2...")
+        st.rerun()
+
+    st.markdown("---")
+
+    # If workflow exists, show the steps
+    if st.session_state.current_workflow:
+        workflow = st.session_state.current_workflow
+        progress = workflow.get_progress()
+
+        # Progress bar
+        st.markdown(f"### Progress: {progress['completed']}/{progress['total']} steps completed")
+        st.progress(progress['percentage'] / 100)
+
+        st.markdown("---")
+
+        # Step 2: Search Knowledge
+        with st.expander("Step 2️⃣: Search for Relevant Knowledge", expanded=progress['completed'] < 2):
+            st.markdown("**Search for similar past engagements**")
+            search_query = st.text_input(
+                "Search query",
+                placeholder="e.g., technology infrastructure optimization",
+                key="workflow_search"
+            )
+            if st.button("Search Knowledge Base", key="workflow_search_btn"):
+                if search_query:
+                    results = st.session_state.embeddings.semantic_search(search_query, top_k=5)
+                    st.session_state.workflow_search_results = results
+                    st.success(f"Found {len(results)} similar engagements")
+
+        # Step 3: Identify Related Documents
+        with st.expander("Step 3️⃣: System Identifies Related Documents", expanded=progress['completed'] < 3):
+            st.markdown("**AI-identified related documents, templates, and lessons learned**")
+            if hasattr(st.session_state, 'workflow_search_results'):
+                st.markdown("**Related Engagements:**")
+                for i, result in enumerate(st.session_state.workflow_search_results, 1):
+                    doc = result.document
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.markdown(f"{i}. **{doc.title}** ({result.similarity_score:.0%})")
+                    with col2:
+                        if st.checkbox("Select", key=f"select_{doc.id}"):
+                            if doc.id not in workflow.selected_documents:
+                                workflow.selected_documents.append(doc.id)
+
+        # Step 4: AI Summarize & Recommend
+        with st.expander("Step 4️⃣: AI Assists with Summaries & Recommendations", expanded=progress['completed'] < 4):
+            st.markdown("**AI-powered summaries and strategic recommendations**")
+            if workflow.selected_documents:
+                st.success("✅ Analyzing selected documents...")
+                for doc_id in workflow.selected_documents:
+                    doc = st.session_state.kb.get_document(doc_id)
+                    if doc:
+                        with st.container(border=True):
+                            st.markdown(f"**{doc.title}**")
+                            st.markdown(f"*Industry: {doc.industry} | Type: {doc.transaction_type}*")
+                            if doc.key_outcomes:
+                                st.markdown(f"**Outcomes:** {doc.key_outcomes}")
+                            if doc.consulting_approach:
+                                st.markdown(f"**Approach:** {doc.consulting_approach}")
+            else:
+                st.info("Select documents in Step 3 to see summaries")
+
+        # Step 5: Review & Evaluate
+        with st.expander("Step 5️⃣: Review & Evaluate Results", expanded=progress['completed'] < 5):
+            st.markdown("**Review the recommended content and assess relevance**")
+            review_notes = st.text_area(
+                "Your evaluation and notes",
+                height=100,
+                placeholder="What insights are most relevant? Any gaps?",
+                key="workflow_review"
+            )
+            if st.button("Mark Step 5 Complete", key="step5_complete"):
+                st.session_state.workflow_engine.update_step(
+                    workflow.id, 5, "completed",
+                    {"review_notes": review_notes}
+                )
+                st.success("✅ Step 5 completed")
+
+        # Step 6: Select Content for Reuse
+        with st.expander("Step 6️⃣: Select Content to Reuse/Adapt", expanded=progress['completed'] < 6):
+            st.markdown("**Choose which elements to adapt for your solution**")
+            elements = st.multiselect(
+                "Select elements to reuse",
+                ["Consulting Approach", "Success Factors", "Team Structure", "Timeline", "Process Steps", "Risk Mitigation"],
+                key="workflow_reuse_elements"
+            )
+            if st.button("Mark Step 6 Complete", key="step6_complete"):
+                st.session_state.workflow_engine.update_step(
+                    workflow.id, 6, "completed",
+                    {"selected_elements": elements}
+                )
+                st.success("✅ Step 6 completed")
+
+        # Step 7: Create New Output
+        with st.expander("Step 7️⃣: Create New Output", expanded=progress['completed'] < 7):
+            st.markdown("**Create a new engagement or proposal using discovered knowledge**")
+            col1, col2 = st.columns(2)
+            with col1:
+                new_title = st.text_input("Output Title", placeholder="e.g., New Client Proposal")
+                new_industry = st.text_input("Industry")
+            with col2:
+                new_type = st.text_input("Type")
+                new_value = st.number_input("Value ($M)", min_value=0.0, step=0.1)
+
+            new_content = st.text_area(
+                "Output Content (auto-populated from selected engagements)",
+                height=150,
+                key="workflow_new_content"
+            )
+
+            if st.button("Save Output", key="step7_save"):
+                if new_title and new_industry and new_content:
+                    doc_id = generate_doc_id(new_title, datetime.now())
+                    new_doc = Document(
+                        id=doc_id,
+                        title=new_title,
+                        content=new_content,
+                        doc_type="engagement",
+                        industry=new_industry,
+                        transaction_type=new_type or None,
+                        engagement_value=new_value if new_value > 0 else None,
+                        metadata={"created_from_workflow": True, "source_docs": workflow.selected_documents}
+                    )
+                    workflow.created_output = new_doc
+                    st.session_state.workflow_engine.update_step(workflow.id, 7, "completed")
+                    st.success("✅ Output created! Continue to Step 8...")
+
+        # Step 8: Tag & Classify
+        with st.expander("Step 8️⃣: Tag & Classify the Output", expanded=progress['completed'] < 8):
+            st.markdown("**Add tags and classification for future discovery**")
+            tags = st.multiselect(
+                "Add tags",
+                ["Cost Optimization", "Digital Transformation", "M&A", "Restructuring", "Cloud Migration", "Custom"],
+                key="workflow_tags"
+            )
+            custom_tag = st.text_input("Custom tag (if needed)")
+            if custom_tag:
+                tags.append(custom_tag)
+
+            if st.button("Mark Step 8 Complete", key="step8_complete"):
+                workflow.tags = tags
+                st.session_state.workflow_engine.update_step(workflow.id, 8, "completed", {"tags": tags})
+                st.success("✅ Step 8 completed")
+
+        # Step 9: Store for Future Reuse
+        with st.expander("Step 9️⃣: Store for Future Discovery & Reuse", expanded=progress['completed'] < 9):
+            st.markdown("**Your output is now part of the knowledge base for future reuse**")
+
+            if workflow.created_output:
+                st.info(f"""
+                **Document stored:**
+                - Title: {workflow.created_output.title}
+                - Industry: {workflow.created_output.industry}
+                - Tags: {', '.join(workflow.tags)}
+                - ID: {workflow.created_output.id[:12]}...
+
+                This knowledge is now discoverable by other team members!
+                """)
+
+                if st.button("Complete Workflow", key="workflow_complete"):
+                    st.session_state.workflow_engine.update_step(workflow.id, 9, "completed")
+                    insights = st.session_state.workflow_engine.get_workflow_insights(workflow.id)
+                    st.success("✅ Workflow completed!")
+                    st.json(insights)
+            else:
+                st.warning("Create output in Step 7 first")
+
+        st.markdown("---")
+        st.markdown("### Workflow Summary")
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Steps Completed", progress['completed'])
+        with col2:
+            st.metric("Documents Selected", len(workflow.selected_documents))
+        with col3:
+            st.metric("Tags Applied", len(workflow.tags))
+        with col4:
+            st.metric("Output Created", "✅" if workflow.created_output else "⏳")
+
+
 def main():
     """Main app entry point."""
     # Sidebar navigation
@@ -732,8 +946,8 @@ def main():
         st.markdown("## Navigation")
         selected = option_menu(
             menu_title=None,
-            options=["Home", "Search", "Recommendations", "Synthesize", "Analysis", "Documents", "Add Engagement"],
-            icons=["house", "search", "lightbulb", "sparkles", "chart-line", "folder", "plus"],
+            options=["Home", "Knowledge Workflow", "Search", "Recommendations", "Synthesize", "Analysis", "Documents", "Add Engagement"],
+            icons=["house", "flow", "search", "lightbulb", "sparkles", "chart-line", "folder", "plus"],
             menu_icon="cast",
             default_index=0,
             styles={
@@ -764,6 +978,8 @@ def main():
     # Route to selected page
     if selected == "Home":
         render_home()
+    elif selected == "Knowledge Workflow":
+        render_workflow()
     elif selected == "Add Engagement":
         render_add_document()
     elif selected == "Search":
