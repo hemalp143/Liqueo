@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liqueo Strategic Framework</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Charter:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+    <style>
+        :root {
+            --text-primary: #1a1a1a;
+            --text-secondary: #525252;
+            --text-light: #787878;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f7f6f3;
+            --accent: #FF6B35;
+            --accent-light: #FFE5D9;
+            --border: #e5e3de;
+            --success: #10a37f;
+
+            --font-serif: "Charter", Georgia, serif;
+            --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            --font-mono: "JetBrains Mono", monospace;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --text-primary: #f0ede8;
+                --text-secondary: #c0bbb5;
+                --text-light: #a09a92;
+                --bg-primary: #1a1a1a;
+                --bg-secondary: #262220;
+                --border: #3d3935;
+                --accent-light: #4d2818;
+            }
+        }
+
+        :root[data-theme="dark"] {
+            --text-primary: #f0ede8;
+            --text-secondary: #c0bbb5;
+            --text-light: #a09a92;
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #262220;
+            --border: #3d3935;
+            --accent-light: #4d2818;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            color: var(--text-primary);
+            background: var(--bg-primary);
+            line-height: 1.6;
+            font-size: 16px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 60px 40px;
+        }
+
+        .header {
+            margin-bottom: 80px;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 40px;
+        }
+
+        .header h1 {
+            font-family: var(--font-serif);
+            font-size: 42px;
+            line-height: 1.2;
+            margin-bottom: 16px;
+            font-weight: 400;
+        }
+
+        .tagline {
+            font-size: 18px;
+            color: var(--text-secondary);
+            font-family: var(--font-serif);
+            font-style: italic;
+        }
+
+        .intro {
+            margin: 40px 0 60px;
+            padding: 24px;
+            background: var(--bg-secondary);
+            border-left: 4px solid var(--accent);
+            border-radius: 2px;
+        }
+
+        .intro p {
+            font-size: 16px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+        }
+
+        .question-block {
+            margin-bottom: 80px;
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 40px;
+            align-items: start;
+        }
+
+        .question-block:last-child {
+            margin-bottom: 0;
+        }
+
+        .question-number {
+            font-family: var(--font-mono);
+            font-size: 48px;
+            color: var(--accent);
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 12px;
+        }
+
+        .question-text {
+            font-family: var(--font-serif);
+            font-size: 20px;
+            color: var(--text-primary);
+            line-height: 1.4;
+            margin-bottom: 16px;
+            font-weight: 400;
+        }
+
+        .answer {
+            color: var(--text-secondary);
+        }
+
+        .answer p {
+            margin-bottom: 16px;
+            line-height: 1.75;
+        }
+
+        .answer p:last-child {
+            margin-bottom: 0;
+        }
+
+        .example-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 20px;
+            margin: 20px 0;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: var(--text-secondary);
+            overflow-x: auto;
+            line-height: 1.6;
+        }
+
+        .example-label {
+            font-family: var(--font-sans);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--text-light);
+            margin-bottom: 12px;
+        }
+
+        .highlight {
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .feature-list {
+            list-style: none;
+            margin: 20px 0;
+        }
+
+        .feature-list li {
+            padding: 8px 0 8px 28px;
+            position: relative;
+            line-height: 1.6;
+        }
+
+        .feature-list li:before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .cycle-diagram {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 32px;
+            margin: 24px 0;
+            text-align: center;
+        }
+
+        .cycle-text {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 80px 0;
+        }
+
+        .footer {
+            margin-top: 80px;
+            padding-top: 40px;
+            border-top: 1px solid var(--border);
+            color: var(--text-light);
+            font-size: 13px;
+            line-height: 1.8;
+        }
+
+        @media (max-width: 768px) {
+            .question-block {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 40px 24px;
+            }
+
+            .header h1 {
+                font-size: 32px;
+            }
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+
+            .container {
+                max-width: 100%;
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Liqueo</h1>
+            <p class="tagline">Knowledge Discovery & Reuse for Financial Consultants</p>
+        </div>
+
+        <div class="intro">
+            <p>This strategic framework explains how Liqueo solves the knowledge discovery and reuse challenge for financial consultants. It answers 11 essential questions about users, workflows, AI assistance, and the complete cycle of knowledge contribution and discovery.</p>
+        </div>
+
+        <!-- Question 1 -->
+        <div class="question-block">
+            <div>
+                <div class="question-number">1</div>
+                <div class="question-text">Who is the user?</div>
+            </div>
+            <div class="answer">
+                <p><span class="highlight">Financial and management consultants</span> in strategy, operations, and M&A who face recurring client challenges and need to leverage institutional knowledge efficiently.</p>
+
+                <p><strong>Primary User Segments:</strong></p>
+                <ul class="feature-list">
+                    <li>Project managers planning new engagements</li>
+                    <li>Senior consultants seeking precedent for complex situations</li>
+                    <li>Engagement leads identifying team expertise and past approaches</li>
+                    <li>Partners evaluating proposals and resource allocation</li>
+                    <li>Analysts finding comparable cases for benchmarking</li>
+                </ul>
+
+                <p><strong>User Context:</strong> Consultants typically have 5-15 years of experience, manage multiple engagements simultaneously, and need instant access to what the firm has learned. They face time pressure: proposals due in days, client presentations tomorrow, and no time to manually search through archives.</p>
+
+                <p><strong>Pain Point:</strong> Valuable knowledge exists—in past project files, emails, team members' heads—but is impossible to find when you need it. A consultant with exactly the right experience is unavailable. The same problem gets solved repeatedly with different (or worse) solutions.</p>
+            </div>
+        </div>
+
+        <!-- Question 2 -->
+        <div class="question-block">
+            <div>
+                <div class="question-number">2</div>
+                <div class="question-text">What problem are they trying to solve?</div>
+            </div>
+            <div class="answer">
+                <p><span class="highlight">Knowledge fragmentation and reuse friction</span>. Consultants face three interconnected problems:</p>
+
+                <p><strong>1. Undiscoverability:</strong> Past engagements are filed by project name or client, not by the problems they solved. A consultant working on "retail bank digital transformation" must manually search for cases, then manually assess relevance.</p>
+
+                <p><strong>2. Inefficient Synthesis:</strong> Even when similar cases are found, extracting what's relevant—the approach, the timeline, the lessons learned—requires reading full engagement files. Critical insights are buried in hundreds of pages.</p>
+
+                <p><strong>3. Lost Learning:</strong> Each completed engagement represents institutional knowledge, but it's rarely extracted or structured for reuse. What worked, what didn't, and why remains locked in project closure reports.</p>
+
+                <div class="example-box">
+                    <div class="example-label">The Cost of Knowledge Loss</div>
+                    Without Liqueo, a consultant faces:<br>
+                    • 3 hours manually searching archives<br>
+                    • 2 hours reading candidate documents<br>
+                    • 1 hour extracting relevant insights<br>
+                    • Duplicates the work a colleague did 6 months ago<br>
+                    <br>
+                    With Liqueo: 15 minutes to search, analyze, and discover relevant patterns.
+                </div>
+
+                <p><strong>Business Impact:</strong> Slower proposal development, inconsistent approaches across similar engagements, and lost competitive advantage from not leveraging what the firm already knows.</p>
+            </div>
+        </div>
+
+        <!-- Question 3 -->
+        <div class="question-block">
+            <div>
+                <div class="question-number">3</div>
+                <div class="question-text">What triggers them to use the solution?</div>
+            </div>
+            <div class="answer">
+                <p>Consultants activate Liqueo at specific, predictable moments when <span class="highlight">knowledge need is urgent and cost is high</span>:</p>
+
+                <ul class="feature-list">
+                    <li><strong>Proposal Development:</strong> New RFP arrives; must quickly assess scope, approach, and timeline. "Have we done this before?"</li>
+                    <li><strong>Engagement Planning:</strong> Kicked off a new project; need to identify team expertise and proven methodologies from similar work.</li>
+                    <li><strong>Strategic Recommendation:</strong> Client asks a novel question; need to find what worked in comparable situations before recommending an approach.</li>
+                    <li><strong>Risk Mitigation:</strong> Project hits a challenge; searching for how similar challenges were overcome in past engagements.</li>
+                    <li><strong>Resource Allocation:</strong> Partner needs to staff a specialized role; looking for past engagements with similar requirements to identify expertise.</li>
+                </ul>
+
+                <p><strong>The Trigger Pattern:</strong> The user has a specific problem or question, has limited time, and knows the firm has likely solved something similar. They need to find, understand, and act on that knowledge within hours or days—not weeks.</p>
+
+                <div class="example-box">
+                    <div class="example-label">Real Trigger Example</div>
+                    Friday 4pm: RFP arrives for "Fintech cost optimization"<br>
+                    Partner needs proposal draft by Monday 9am<br>
+                    → Opens Liqueo<br>
+                    → Searches: "fintech infrastructure optimization"<br>
+                    → Finds 3 similar cases with approach, timeline, outcomes<br>
+                    → Uses as foundation for proposal<br>
+                    → Proposal ready by Saturday afternoon
+                </div>
+            </div>
+        </div>
+
+        <!-- Question 4 -->
+        <div class="question-block">
+            <div>
+                <div class="question-number">4</div>
+                <div class="question-text">How do they search for knowledge?</div>
+            </div>
+            <div class="answer">
+                <p>Liqueo uses <span class="highlight">semantic search powered by AI embeddings</span>, which understands meaning beyond keywords:</p>
+
+                <p><strong>Search Methods:</strong></p>
+                <ul class="feature-list">
+                    <li><strong>Semantic Query:</strong> "We need to optimize cloud infrastructure and reduce costs" finds engagements about technology consolidation, even if those exact words aren't used.</li>
+                    <li><strong>Industry Filter:</strong> Narrow by industry (Technology, Healthcare, Finance, Retail) to find domain-specific patterns.</li>
+                    <li><strong>Transaction Type Filter:</strong> Filter by engagement type (M&A, Restructuring, Digital Transformation) to find structurally similar cases.</li>
+                    <li><strong>Hybrid Matching:</strong> Combines semantic similarity with keyword-based fallback when embeddings aren't available (graceful degradation).</li>
+                </ul>
+
+                <p><strong>Why Semantic Search Matters:</strong> A consultant searching "technology cost reduction" would get zero results if searching keyword-only. Semantic search understands that "retail infrastructure consolidation" and "IT back-office reorganization" are relevant even with different terminology.</p>
+
+                <div class="example-box">
+                    <div class="example-label">Search Behavior Example</div>
+                    Query: "Bank reorganization with cost efficiency"<br>
+                    <br>
+                    Keyword-only would find:<br>
+                    • Documents with those exact words<br>
+                    • Misses structurally similar cases<br>
+                    <br>
+                    Semantic search finds:<br>
+                    • "Investment Bank Back-Office Reorganization" (40% match)<br>
+                    • "Retail Chain Restructuring" (62% match)<br>
+                    • "Financial Services Process Consolidation" (78% match)<br>
+                    • All ranked by relevance, not just keyword overlap
+                </div>
+
+                <p><strong>Result Presentation:</strong> Top 5 results ranked by relevance score (as percentage), with industry, type, value, and duration visible at a glance.</p>
+            </div>
+        </div>
+
+        <!-- Question 5 -->
+        <div class="question-block">
+            <div>
+                <div class="question-number">5</div>
+                <div class="question-text">How does AI help them find the most relevant information?</div>
+            </div>
+            <div class="answer">
+                <p>AI plays three roles in <span class="highlight">discovering and prioritizing relevant information</span>:</p>
+
+                <p><strong>1. Semantic Understanding (Embeddings):</strong> AI converts engagement text into semantic vectors, so searches understand meaning rather than just matching words. "Cost optimization" and "expense reduction" are understood as equivalent.</p>
+
+                <p><strong>2. Recommendation Engine:</strong> Beyond search results, AI identifies patterns across similar engagements and recommends:</p>
+                <ul class="feature-list">
+                    <li>Suggested consulting approaches from comparable cases</li>
+                    <li>Potential challenges to anticipate (identified patterns)</li>
+                    <li>Estimated effort and timeline based on similar work</li>
+                    <li>Industry-specific success factors</li>
+                </ul>
+
+                <p><strong>3. Synthesis & Insights:</strong> AI analyzes multiple similar engagements together and generates:</p>
+                <ul class="feature-list">
+                    <li>Strategic recommendations for the current situation</li>
+                    <li>Aggregated lessons learned across similar cases</li>
+                    <li>Industry trend analysis</li>
+                    <li>Risk identification and mitigation strategies</li>
+                </ul>
+
+                <div class="example-box">
+                    <div class="example-label">AI Assistance in Action</div>
+                    Consultant searches: "Healthcare provider digital transformation"<br>
+                    <br>
+                    Search finds relevant cases<br>
+                    ↓<br>
+                    AI recommends: "Organizations similar to yours typically use<br>
+                    3-phase approach: assessment → technology selection →<br>
+                    implementation. Typical timeline: 12-18 months."<br>
+                    ↓<br>
+                    Synthesis generates: "Common success factors in healthcare<br>
+                    digital transformation: strong change management,<br>
+                    phased rollout by department, executive sponsorship."
+                </div>
+
+                <p><strong>The Key Difference:</strong> Without AI, a consultant gets a list of documents to read. With AI, they get a curated understanding of what works, why, and what to watch for.</p>
+            </div>
+        </div>
+
+        <!-- Question 6 -->
+        <div class="question-block">
+            <div>
+                <div class="question-number">6</div>
+                <div class="question-text">How are relevant results presented?</div>
+            </div>
+            <div class="answer">
+                <p>Liqueo presents results with <span class="highlight">progressive disclosure: summary first, details on demand</span>:</p>
+
+                <p><strong>Search Results View:</strong></p>
+                <ul class="feature-list">
+                    <li><strong>Relevance Score:</strong> 0-100% indicating how closely the engagement matches your query</li>
+                    <li><strong>Title & Metadata:</strong> Engagement name, industry, transaction type at a glance</li>
+                    <li><strong>Key Outcomes:</strong> One-line summary of what was achieved</li>
+                    <li><strong>Quick Details:</strong> Value ($M), duration (months), client name</li>
+                    <li><strong>View Button:</strong> Click to open full modal with complete details</li>
+                </ul>
+
+                <p><strong>Detail Modal (on click):</strong> When a consultant clicks "View", a modal popup displays:</p>
+                <ul class="feature-list">
+                    <li>Complete engagement details and description</li>
+                    <li>Consulting approach used</li>
+                    <li>Key outcomes and impact metrics</li>
+                    <li>Associated files and documents</li>
+                    <li>Metadata and creation date</li>
+                </ul>
+
+                <p><strong>Recommendations View:</strong> When using the recommendation engine, each result shows:</p>
+                <ul class="feature-list">
+                    <li>Relevance percentage and reasoning why it's relevant</li>
+                    <li>Suggested approach based on the similar case</li>
+                    <li>Potential challenges to anticipate</li>
+                    <li>Estimated effort</li>
+                </ul>
+
+                <p><strong>Synthesis View:</strong> AI-generated insights presented as:</p>
+                <ul class="feature-list">
+                    <li>Strategic recommendations summarizing multiple cases</li>
+                    <li>Industry trend analysis</li>
+                    <li>Common success factors and risk areas</li>
+                    <li>Timeline and resource estimates</li>
+                </ul>
+
+                <p><strong>Design Principle:</strong> Information scales from scannable (relevance + headline) to detailed (full engagement modal) based on user interest. No cognitive overload; everything visible in 1-2 clicks.</p>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Question 7 -->
+        <div class="question-block">
+            <div>
+                <div class="question-number">7</div>
+                <div class="question-text">How do they determine whether existing knowledge is reusable?</div>
+            </div>
+            <div class="answer">
+                <p>Consultants evaluate reusability through <span class="highlight">structured assessment in the workflow</span>:</p>
+
+                <p><strong>Relevance Assessment (Step 5 of Workflow):</strong> Consultants review multiple dimensions:</p>
+                <ul class="feature-list">
+                    <li><strong>Domain Fit:</strong> How similar is the client industry/context? Is the pattern transferable?</li>
+                    <li><strong>Structural Similarity:</strong> Are the challenges structurally equivalent, even if the domain differs?</li>
+                    <li><strong>Timeline Alignment:</strong> Is the estimated duration reasonable for the current engagement?</li>
+                    <li><strong>Resource Comparison:</strong> Do we have similar expertise and team capacity?</li>
+                    <li><strong>Outcome Relevance:</strong> Did the past engagement achieve results applicable to this situation?</li>
+                </ul>
+
+                <p><strong>Adaptation Decision:</strong> Based on this assessment, the consultant decides:</p>
+                <ul class="feature-list">
+                    <li><strong>Direct Reuse:</strong> Approach is directly applicable; minimal adaptation needed</li>
+                    <li><strong>Adapt & Customize:</strong> Core approach is sound; tailor specifics to this situation</li>
+                    <li><strong>Reference Only:</strong> Useful for context/benchmarking but not directly applicable</li>
+                    <li><strong>Not Applicable:</strong> Different domain/context; keep searching</li>
+                </ul>
+
+                <div class="example-box">
+                    <div class="example-label">Reusability Assessment Example</div>
+                    Current Challenge: "Retail bank digital transformation"<br>
+                    Found Case: "Investment bank back-office reorganization"<br>
+                    <br>
+                    Assessment:<br>
+                    • Domain: Different (retail vs investment) → -20%<br>
+                    • Structure: Technology + process consolidation → +40%<br>
+                    • Timeline: Similar scale (10-12 months) → +15%<br>
+                    • Outcome: Cost reduction achieved → +25%<br>
+                    <br>
+                    Decision: Adapt the core approach; customize for<br>
+                    retail banking specific challenges
+                </div>
+
+                <p><strong>Workflow Support:</strong> The structured 9-step workflow explicitly includes "Review & Evaluate" and "Select Content to Reuse" steps, forcing deliberate assessment rather than haphazard borrowing.</p>
+            </div>
+        </div>
+
+        <!-- Question 8 -->
+        <div class="question-block">
+            <div>
+                <div class="question-number">8</div>
+                <div class="question-text">How does AI help them understand and synthesise the knowledge that has been found?</div>
+            </div>
+            <div class="answer">
+                <p>AI synthesizes knowledge through <span class="highlight">multiple LLM-powered analysis modes</span>:</p>
+
+                <p><strong>Synthesis Engine (Synthesizer Module):</strong> Takes multiple similar engagements and generates:</p>
+                <ul class="feature-list">
+                    <li><strong>Strategic Recommendations:</strong> "Based on 3 similar healthcare transformations, here's what works..."</li>
+                    <li><strong>Aggregated Learnings:</strong> Extract common success factors, typical challenges, resource requirements</li>
+                    <li><strong>Industry Analysis:</strong> Trends across all engagements in a specific sector</li>
+                    <li><strong>Risk Synthesis:</strong> Consolidate risks identified in similar cases</li>
+                </ul>
+
+                <p><strong>Three-Mode Operation (Graceful Degradation):</strong></p>
+                <ul class="feature-list">
+                    <li><strong>Full Mode (LLM Available):</strong> Uses Claude API for sophisticated synthesis and strategic insight</li>
+                    <li><strong>Hybrid Mode (Partial Availability):</strong> Combines available LLM with keyword/metadata analysis</li>
+                    <li><strong>Manual Mode (No LLM):</strong> Generates insights from engagement metadata, structured patterns, and templates</li>
+                </ul>
+
+                <div class="example-box">
+                    <div class="example-label">Synthesis in Action</div>
+                    Input: 3 similar engagements on "cost optimization"<br>
+                    <br>
+                    AI Synthesis Output:<br>
+                    "Across three comparable engagements:<br>
+                    <br>
+                    Approach: All used 3-phase model (assess, design, implement)<br>
+                    Timeline: Average 11 months, range 9-14 months<br>
+                    Success Factors: Strong sponsorship (3/3), change mgmt<br>
+                    Challenges: Stakeholder resistance, timeline pressure<br>
+                    Team: Senior + 2-3 analysts + functional experts<br>
+                    <br>
+                    Recommendation: Plan 12 months, invest heavily in<br>
+                    change management, secure executive sponsorship early."
+                </div>
+
+                <p><strong>Lessons Learned Extraction:</strong> AI automatically extracts lessons from each engagement:</p>
+                <ul class="feature-list">
+                    <li>Success factors identified from outcomes</li>
+                    <li>Process learnings from consulting approach</li>
+                    <li>Timeline/resource patterns</li>
+                    <li>Industry-specific insights</li>
+                </ul>
+
+                <p><strong>RAG (Retrieval-Augmented Generation):</strong> Liqueo uses a knowledge retrieval + synthesis pattern: retrieve relevant engagements, then have AI synthesize patterns across them. This grounds synthesis in actual firm experience rather than generic knowledge.</p>
+            </div>
+        </div>
+
+        <!-- Question 9 -->
+        <div class="question-block">
+            <div>
+                <div class="question-number">9</div>
+                <div class="question-text">How do they adapt existing knowledge for a new situation?</div>
+            </div>
+            <div class="answer">
+                <p>Liqueo supports adaptation through <span class="highlight">structured workflow and templated content</span>:</p>
+
+                <p><strong>Step 7: Create Output</strong> in the workflow enables this explicitly:</p>
+                <ul class="feature-list">
+                    <li>Start with content auto-populated from selected similar engagements</li>
+                    <li>Edit and customize for the new situation's specific context</li>
+                    <li>Add new engagement details (title, industry, value, duration)</li>
+                    <li>Maintain structure (approach, outcomes, risks) while updating content</li>
+                </ul>
+
+                <p><strong>Template-Driven Adaptation:</strong> Rather than copy-paste, consultants work from templates extracted from similar cases:</p>
+                <ul class="feature-list">
+                    <li><strong>Approach Template:</strong> Generic methodology from similar cases, customized for new client</li>
+                    <li><strong>Timeline Template:</strong> Standard phasing (assess → design → implement) with adjusted duration</li>
+                    <li><strong>Resource Template:</strong> Typical team structure, modified for scope</li>
+                    <li><strong>Risk Template:</strong> Common risks in similar engagements, evaluated for this client</li>
+                </ul>
+
+                <div class="example-box">
+                    <div class="example-label">Adaptation Workflow</div>
+                    Start: Find 3 similar "bank digital transformation" cases<br>
+                    <br>
+                    Template from cases:<br>
+                    "Standard approach: Phase 1 (assess tech + org),<br>
+                    Phase 2 (design solution), Phase 3 (pilot + rollout).<br>
+                    Timeline: 12 months. Team: 1 partner, 2 managers, 3 analysts."<br>
+                    <br>
+                    Adaptation for new client:<br>
+                    "Adjust Phase 2 timeline (this client has simpler systems),<br>
+                    reduce team to 1 manager + 2 analysts (smaller scope),<br>
+                    compress to 10-month timeline."<br>
+                    <br>
+                    Result: Customized proposal in hours, not days
+                </div>
+
+                <p><strong>Content Reuse Without Copy-Paste:</strong> The workflow prevents mindless duplication. Consultants explicitly select which elements to reuse (Step 6: "Select Content"), then adapt them in Step 7. This is deliberate reuse, not copy-paste.</p>
+
+                <p><strong>Metadata Tracking:</strong> When you create output from a workflow, Liqueo records which source engagements informed it. This traceability helps future users understand the logic behind your approach.</p>
+            </div>
+        </div>
+
+        <!-- Question 10 -->
+        <div class="question-block">
+            <div>
+                <div class="question-number">10</div>
+                <div class="question-text">How do they contribute new knowledge back into the system?</div>
+            </div>
+            <div class="answer">
+                <p>Knowledge contribution happens <span class="highlight">at engagement completion, integrated into normal workflow</span>:</p>
+
+                <p><strong>Engagement Creation (Add Engagement Tab):</strong> When a consultant completes an engagement and wants to share learning:</p>
+                <ul class="feature-list">
+                    <li>Enter engagement details: title, industry, type, value, duration</li>
+                    <li>Add consulting approach used</li>
+                    <li>Document key outcomes achieved</li>
+                    <li>Upload supporting files (proposals, reports, deliverables)</li>
+                    <li>Optionally upload from OneDrive/SharePoint URLs</li>
+                </ul>
+
+                <p><strong>Content Extraction:</strong> System automatically extracts:</p>
+                <ul class="feature-list">
+                    <li>Text from uploaded documents (PDF, Word, Excel, CSV)</li>
+                    <li>Metadata from engagement details</li>
+                    <li>Structured information for indexing and search</li>
+                </ul>
+
+                <p><strong>Step 8-9: Tagging & Storage:</strong> In the structured workflow, engagement creation includes:</p>
+                <ul class="feature-list">
+                    <li><strong>Tagging:</strong> Add descriptive tags (Cost Optimization, Digital Transformation, M&A, etc.)</li>
+                    <li><strong>Classification:</strong> Industry, transaction type, success metrics</li>
+                    <li><strong>Storage:</strong> Automatically indexed and made searchable</li>
+                </ul>
+
+                <div class="example-box">
+                    <div class="example-label">Knowledge Contribution Process</div>
+                    Engagement Completed: "Tech Bank Infrastructure Consolidation"<br>
+                    <br>
+                    Step 1: Add to Liqueo<br>
+                    ↓<br>
+                    Step 2: Enter metadata<br>
+                    • Industry: Financial Services<br>
+                    • Type: Restructuring<br>
+                    • Value: $2.8M<br>
+                    • Approach: Process automation + consolidation<br>
+                    • Outcomes: 40% cost reduction, improved uptime<br>
+                    ↓<br>
+                    Step 3: Upload files<br>
+                    • Proposal PDF<br>
+                    • Final report<br>
+                    • Team structure<br>
+                    ↓<br>
+                    Step 4: Add tags<br>
+                    • "Cost Optimization"<br>
+                    • "Process Automation"<br>
+                    • "Banking"<br>
+                    ↓<br>
+                    Step 5: Store<br>
+                    → Available for discovery
+                </div>
+
+                <p><strong>Automatic Indexing:</strong> Once stored, the engagement is automatically:</p>
+                <ul class="feature-list">
+                    <li>Converted to embeddings for semantic search</li>
+                    <li>Indexed by industry, type, and tags</li>
+                    <li>Available in recommendation engine</li>
+                    <li>Included in synthesis analysis</li>
+                </ul>
+
+                <p><strong>Knowledge Quality:</strong> By requiring tagging and classification upfront, Liqueo ensures contributed knowledge is discoverable and properly contextualized. Bad metadata = bad discovery.</p>
+            </div>
+        </div>
+
+        <!-- Question 11 -->
+        <div class="question-block">
+            <div>
+                <div class="question-number">11</div>
+                <div class="question-text">How does the next user benefit from that contribution?</div>
+            </div>
+            <div class="answer">
+                <p>Knowledge contributions create <span class="highlight">exponential value through the continuous cycle</span>:</p>
+
+                <p><strong>Immediate Benefits (Next User, Days Later):</strong></p>
+                <ul class="feature-list">
+                    <li>Consultant faces similar challenge: "Digital transformation for financial services"</li>
+                    <li>Searches Liqueo and finds the newly contributed engagement</li>
+                    <li>Gets 80% of the work already done: proven approach, timeline, team structure</li>
+                    <li>Adapts rather than creating from scratch: saves 3-5 days per proposal</li>
+                </ul>
+
+                <div class="cycle-diagram">
+                    <div class="cycle-text">
+                        User A completes "Bank Digital Transformation"<br>
+                        ↓<br>
+                        Contributes engagement + learnings to Liqueo<br>
+                        ↓<br>
+                        User B faces "Fintech Digital Transformation"<br>
+                        ↓<br>
+                        Finds User A's engagement via search<br>
+                        ↓<br>
+                        Builds proposal 3x faster using User A's approach<br>
+                        ↓<br>
+                        Contributes learnings + adaptations back<br>
+                        ↓<br>
+                        User C faces "Retail Digital Transformation"<br>
+                        ↓<br>
+                        Now has 2+ precedents to draw from<br>
+                        ↓<br>
+                        <strong>Value Multiplies</strong>
+                    </div>
+                </div>
+
+                <p><strong>Medium-Term Benefits (Weeks/Months):</strong></p>
+                <ul class="feature-list">
+                    <li>Pattern Recognition: Liqueo's AI identifies common approaches across multiple digital transformation engagements</li>
+                    <li>Industry Analysis: "Digital Transformation in Financial Services" synthesis emerges from 3+ contributed cases</li>
+                    <li>Template Creation: Recurring patterns are extracted as reusable templates</li>
+                    <li>Risk Identification: Common challenges across cases are surfaced for new users</li>
+                </ul>
+
+                <p><strong>Long-Term Benefits (Months/Years):</strong></p>
+                <ul class="feature-list">
+                    <li><strong>Institutional Knowledge:</strong> Collective learning becomes codified and discoverable</li>
+                    <li><strong>Competitive Advantage:</strong> Faster, more consistent delivery on recurring engagement types</li>
+                    <li><strong>Skill Development:</strong> Analysts can learn from 10+ similar cases when starting a new domain</li>
+                    <li><strong>Quality Improvement:</strong> Best practices from top performers become baseline for all</li>
+                    <li><strong>Time Savings:</strong> Cumulative: 3 days/proposal × 100 proposals/year = 8 months of consultant time annually</li>
+                </ul>
+
+                <p><strong>The Multiplier Effect:</strong> Each contribution becomes richer context for future contributions. User A's engagement provides User B with a foundation, which B adapts and contributes. User C now has not one precedent but 1 + (B's adaptation). The system's value accelerates over time.</p>
+
+                <p><strong>Accessibility:</strong> Knowledge isn't restricted by who was on the original team. An analyst can access the institutional knowledge of the firm's top consultants, democratizing expertise.</p>
+
+                <p><strong>Continuous Improvement:</strong> Each workflow creates new knowledge. Each search trains the recommendation engine. Each synthesis teaches the AI patterns. The system improves with use, not despite it.</p>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="footer">
+            <p><strong>Liqueo: Knowledge Discovery & Reuse System</strong></p>
+            <p>Transforming consulting practices through systematic knowledge discovery, AI-powered synthesis, and continuous institutional learning.</p>
+            <p style="margin-top: 20px; color: var(--text-light);">Version 1.0 • Strategic Framework • 2024</p>
+        </div>
+    </div>
+</body>
+</html>
