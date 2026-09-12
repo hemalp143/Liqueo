@@ -13,6 +13,7 @@ Usage:
 import json
 import sys
 from pathlib import Path
+from datetime import datetime
 
 from liqueo.core import Document, KnowledgeBase
 
@@ -42,12 +43,21 @@ def load_sample_data():
 
     # Initialize knowledge base
     kb = KnowledgeBase()
-    print(f"📚 Knowledge base initialized at {kb.base_path}")
+    print(f"📚 Knowledge base initialized at {kb.storage_dir}")
 
     # Add each document
     added_count = 0
     for item in data:
         try:
+            # Parse dates if they're strings
+            created_at = item.get("created_at")
+            updated_at = item.get("updated_at")
+
+            if isinstance(created_at, str):
+                created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+            if isinstance(updated_at, str):
+                updated_at = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+
             # Create Document from JSON
             doc = Document(
                 id=item.get("id", f"doc-{added_count}"),
@@ -62,8 +72,8 @@ def load_sample_data():
                 consulting_approach=item.get("consulting_approach", ""),
                 key_outcomes=item.get("key_outcomes", ""),
                 tags=item.get("tags", []),
-                created_at=item.get("created_at"),
-                updated_at=item.get("updated_at"),
+                created_at=created_at,
+                updated_at=updated_at,
                 metadata=item.get("metadata", {})
             )
 
