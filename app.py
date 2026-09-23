@@ -458,63 +458,160 @@ def render_search():
     # Display modal popup if a document is selected
     if st.session_state.get("show_modal") and st.session_state.get("selected_doc"):
         doc = st.session_state.selected_doc
-        with st.modal("📋 Engagement Details"):
+        with st.modal("📋 Engagement Details", width="large"):
             col1, col2 = st.columns([4, 1])
             with col1:
                 st.title(doc.title)
             with col2:
-                if st.button("✕", key="close_modal", help="Close"):
+                if st.button("✕", key="close_modal", help="Close", use_container_width=False):
                     st.session_state.show_modal = False
                     st.rerun()
 
             st.markdown("---")
 
-            # Key Information
+            # Overview Metrics
+            st.subheader("📊 Engagement Overview")
             col1, col2, col3, col4 = st.columns(4)
             with col1:
                 st.metric("Industry", doc.industry or "N/A")
             with col2:
                 st.metric("Type", doc.transaction_type or "N/A")
             with col3:
-                st.metric("Value ($M)", f"${doc.engagement_value}" if doc.engagement_value else "N/A")
+                st.metric("Value ($M)", f"${doc.engagement_value:.1f}" if doc.engagement_value else "N/A")
             with col4:
-                st.metric("Duration (months)", doc.duration_months or "N/A")
+                st.metric("Duration", f"{doc.duration_months}m" if doc.duration_months else "N/A")
 
             st.markdown("---")
 
             # Client Information
             if doc.client_name:
-                st.subheader("Client")
-                st.write(doc.client_name)
+                st.subheader("🏢 Client Information")
+                st.info(f"**Client:** {doc.client_name}")
 
             # Engagement Details
             st.subheader("📝 Engagement Details")
-            st.write(doc.content)
+            with st.container(border=True):
+                st.write(doc.content if doc.content else "No details provided")
 
             # Consulting Approach
             if doc.consulting_approach:
                 st.subheader("🎯 Consulting Approach")
-                st.write(doc.consulting_approach)
+                with st.container(border=True):
+                    st.write(doc.consulting_approach)
 
             # Key Outcomes
             if doc.key_outcomes:
-                st.subheader("✅ Key Outcomes")
-                st.write(doc.key_outcomes)
+                st.subheader("✅ Key Outcomes & Results")
+                with st.container(border=True):
+                    st.write(doc.key_outcomes)
 
-            # Metadata
-            if doc.metadata:
-                st.subheader("📁 File Information")
-                if doc.metadata.get("uploaded_files"):
+            # Challenges
+            if doc.metadata and doc.metadata.get("challenges"):
+                st.subheader("⚠️ Challenges & Solutions")
+                with st.container(border=True):
+                    st.write(doc.metadata.get("challenges"))
+
+            # Lessons Learned
+            if doc.metadata and doc.metadata.get("lessons_learned"):
+                st.subheader("💡 Lessons Learned")
+                with st.container(border=True):
+                    st.write(doc.metadata.get("lessons_learned"))
+
+            # Team Information
+            if doc.metadata and doc.metadata.get("team_size"):
+                st.subheader("👥 Team Information")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Team Size", doc.metadata.get("team_size") or "N/A")
+                with col2:
+                    if doc.metadata.get("team_roles"):
+                        st.caption(f"**Key Roles:** {doc.metadata.get('team_roles')}")
+                with col3:
+                    if doc.metadata.get("team_lead"):
+                        st.caption(f"**Lead:** {doc.metadata.get('team_lead')}")
+
+            # Tags
+            if doc.tags:
+                st.subheader("🏷️ Tags & Categories")
+                tag_cols = st.columns(min(len(doc.tags), 4))
+                for idx, tag in enumerate(doc.tags[:4]):
+                    with tag_cols[idx % 4]:
+                        st.caption(f"**{tag}**")
+                if len(doc.tags) > 4:
+                    st.caption(f"... and {len(doc.tags) - 4} more tags")
+
+            # File Information
+            if doc.metadata and doc.metadata.get("uploaded_files"):
+                st.subheader("📁 Attached Files")
+                with st.container(border=True):
                     st.write("**Uploaded Files:**")
                     for fname in doc.metadata.get("uploaded_files", []):
                         st.caption(f"• {fname}")
 
             st.markdown("---")
-            col1, col2 = st.columns(2)
+
+            # Additional Details
+            st.subheader("ℹ️ Additional Information")
+            col1, col2, col3 = st.columns(3)
             with col1:
                 st.caption(f"📅 Created: {doc.created_at.strftime('%Y-%m-%d %H:%M') if doc.created_at else 'N/A'}")
             with col2:
-                st.caption(f"🆔 ID: {doc.id[:8]}...")
+                st.caption(f"🆔 ID: {doc.id[:16]}...")
+            with col3:
+                st.caption(f"📊 Document Type: {doc.doc_type if hasattr(doc, 'doc_type') and doc.doc_type else 'Engagement'}")
+
+            # Action Buttons
+            st.markdown("---")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                if st.button("📋 Copy to Clipboard", use_container_width=True, key=f"copy_{doc.id}"):
+                    # Create summary text
+                    summary = f"""
+Title: {doc.title}
+Industry: {doc.industry or 'N/A'}
+Type: {doc.transaction_type or 'N/A'}
+Value: ${doc.engagement_value or 'N/A'}M
+Duration: {doc.duration_months or 'N/A'} months
+Client: {doc.client_name or 'N/A'}
+
+Details:
+{doc.content or 'N/A'}
+
+Outcomes:
+{doc.key_outcomes or 'N/A'}
+                    """
+                    st.info("📋 Content copied! Paste it anywhere.")
+
+            with col2:
+                if st.button("🔗 Get Similar Engagements", use_container_width=True, key=f"similar_{doc.id}"):
+                    st.info("Finding similar engagements...")
+                    similar = st.session_state.recommender.recommend_similar_engagements(
+                        doc.content or doc.title, top_k=3
+                    )
+                    if similar:
+                        st.success(f"Found {len(similar)} similar engagement(s)")
+                        for sim_result in similar:
+                            st.caption(f"• {sim_result.document.title} ({sim_result.similarity_score:.0%} match)")
+                    else:
+                        st.info("No similar engagements found")
+
+            with col3:
+                if st.button("💾 Export Details", use_container_width=True, key=f"export_{doc.id}"):
+                    # Create JSON export
+                    export_data = {
+                        "title": doc.title,
+                        "industry": doc.industry,
+                        "transaction_type": doc.transaction_type,
+                        "value": doc.engagement_value,
+                        "duration_months": doc.duration_months,
+                        "client": doc.client_name,
+                        "content": doc.content,
+                        "outcomes": doc.key_outcomes,
+                        "approach": doc.consulting_approach,
+                        "tags": doc.tags,
+                        "created_at": doc.created_at.isoformat() if doc.created_at else None
+                    }
+                    st.json(export_data)
 
 
 def render_recommendations():
