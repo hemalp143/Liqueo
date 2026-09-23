@@ -458,7 +458,9 @@ def render_search():
     # Display modal popup if a document is selected
     if st.session_state.get("show_modal") and st.session_state.get("selected_doc"):
         doc = st.session_state.selected_doc
-        with st.modal("📋 Engagement Details", width="large"):
+        # Create a popup-style container at the top
+        st.markdown("---")
+        with st.container(border=True):
             col1, col2 = st.columns([4, 1])
             with col1:
                 st.title(doc.title)
